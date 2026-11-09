@@ -21,6 +21,22 @@
     video{width:100%;max-height:62vh;background:#05080e;border-radius:14px;margin-top:16px}
     .hidden{display:none!important}.pill{display:inline-block;border:1px solid #344665;border-radius:99px;padding:4px 10px;color:#a9c8ff;font-size:12px}
     a{color:#a9c8ff}footer{margin-top:22px;color:#71819e;font-size:12px}
+    .multiview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+    .camera-tile{position:relative;aspect-ratio:16/9;min-width:0;overflow:hidden;border:1px solid #30415e;border-radius:12px;background:#03060b}
+    .camera-tile video{display:block;width:100%;height:100%;max-height:none;margin:0;border-radius:0;object-fit:contain;background:#03060b}
+    .tile-heading{position:absolute;z-index:2;top:9px;left:10px;padding:5px 9px;border-radius:6px;background:#07101dcc;color:#dce8ff;font-size:12px;font-weight:700;letter-spacing:.08em}
+    .tile-status{position:absolute;z-index:2;right:10px;bottom:9px;padding:5px 9px;border-radius:6px;background:#07101dcc;color:#aabbd7;font-size:12px}
+    .camera-tile[data-state="connected"]{border-color:#277d59}
+    .camera-tile[data-state="connected"] .tile-status{color:#8ce0b4}
+    .camera-tile[data-state="connecting"]{border-color:#8b7137}
+    @media(max-width:850px){.multiview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.multiview-grid{grid-template-columns:1fr}}
+    body.obs-mode #multiPanel{display:block!important;width:100%;height:100%;padding:0}
+    body.obs-mode #multiPanel .multiview-grid{width:100vw;height:100vh;margin:0;padding:8px;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px}
+    body.obs-mode #multiPanel .camera-tile{width:100%;height:100%;aspect-ratio:auto}
+    body.obs-mode #multiPanel .camera-tile video{width:100%;height:100%;object-fit:contain}
+    body.obs-mode #multiPanel .actions{display:none!important}
+    body.obs-mode #multiPanel .muted{display:none!important}
     body.obs-mode main{width:100vw;min-height:100vh;margin:0;padding:0}
     body.obs-mode header,body.obs-mode .tabs,body.obs-mode .field,body.obs-mode footer,body.obs-mode .status,body.obs-mode .muted,body.obs-mode .actions{display:none!important}
     body.obs-mode .panel{width:100vw;height:100vh;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:#000}
@@ -36,6 +52,7 @@
     <div class="tabs">
       <button class="tab active" id="sendTab" type="button">إرسال كاميرا</button>
       <button class="tab" id="viewTab" type="button">استقبال في OBS</button>
+      <button class="tab" id="multiTab" type="button">مراقبة الكاميرات</button>
     </div>
     <div class="field"><label for="room">رمز الغرفة</label><input id="room" value="royal-palace" maxlength="40" autocomplete="off"></div>
     <div class="field"><label for="camera">رقم الكاميرا</label><select id="camera"><option value="cam1">Camera 1</option><option value="cam2">Camera 2</option><option value="cam3">Camera 3</option><option value="cam4">Camera 4</option><option value="cam5">Camera 5</option></select></div>
@@ -58,6 +75,21 @@
       <p class="muted">انسخ رابط الاستقبال إلى OBS عبر Browser Source. يجب أن يكون جهاز الإرسال متصلاً بالغرفة وبنفس رقم الكاميرا.</p>
       <div class="actions"><button class="primary" id="connectView" type="button">اتصال بالكاميرا</button><button id="copyUrl" type="button">نسخ رابط OBS</button></div>
       <video id="remoteVideo" autoplay playsinline controls></video>
+    </div>
+    <div id="multiPanel" class="hidden">
+      <p class="muted">شاشة مراقبة مباشرة لجميع الكاميرات الخمس في غرفة واحدة.</p>
+      <div class="actions">
+        <button class="primary" id="connectMulti" type="button">اتصال بكل الكاميرات</button>
+        <button id="disconnectMulti" type="button">إيقاف المراقبة</button>
+        <button id="copyMultiUrl" type="button">نسخ رابط OBS</button>
+      </div>
+      <div class="multiview-grid">
+        <div class="camera-tile" id="tile-cam1" data-state="waiting"><div class="tile-heading">CAMERA 1</div><video id="video-cam1" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam1">بانتظار الكاميرا</div></div>
+        <div class="camera-tile" id="tile-cam2" data-state="waiting"><div class="tile-heading">CAMERA 2</div><video id="video-cam2" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam2">بانتظار الكاميرا</div></div>
+        <div class="camera-tile" id="tile-cam3" data-state="waiting"><div class="tile-heading">CAMERA 3</div><video id="video-cam3" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam3">بانتظار الكاميرا</div></div>
+        <div class="camera-tile" id="tile-cam4" data-state="waiting"><div class="tile-heading">CAMERA 4</div><video id="video-cam4" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam4">بانتظار الكاميرا</div></div>
+        <div class="camera-tile" id="tile-cam5" data-state="waiting"><div class="tile-heading">CAMERA 5</div><video id="video-cam5" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam5">بانتظار الكاميرا</div></div>
+      </div>
     </div>
     <div class="status" id="status" role="status" aria-live="polite">جاهز للاتصال</div>
     <p class="muted">نسخة اختبار أولية. جودة 1080p تعتمد على الهاتف والشبكة والرفع، وقد نحتاج TURN لتحسين الاتصال عبر بعض الشبكات.</p>
