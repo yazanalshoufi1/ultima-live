@@ -42,6 +42,16 @@
     <div id="sendPanel">
       <p class="muted">افتح الصفحة من Safari على الآيفون، اسمح باستخدام الكاميرا والميكروفون، ثم اترك الصفحة مفتوحة أثناء البث.</p>
       <div class="actions"><button class="primary" id="startCamera" type="button">تشغيل الكاميرا</button><button id="stopCamera" type="button">إيقاف</button></div>
+      <div id="cameraTools" class="camera-tools hidden">
+        <div class="tool-row">
+          <label for="zoomControl">الزوم</label>
+          <input id="zoomControl" type="range" min="1" max="1" step="0.1" value="1" disabled>
+          <span id="zoomValue" class="tool-value">غير مدعوم</span>
+        </div>
+        <div class="tool-row">
+          <button id="audioToggle" class="tool-button" type="button">إيقاف الصوت</button>
+        </div>
+      </div>
       <video id="localVideo" autoplay playsinline muted class="hidden"></video>
     </div>
     <div id="viewPanel" class="hidden">
