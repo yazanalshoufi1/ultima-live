@@ -21,7 +21,11 @@ $("room").value = params.get("room") || "royal-palace";
 $("camera").value = params.get("camera") || "cam1";
 if (portal === "sender") { $("room").value = params.get("room") || "royal-palace"; $("camera").value = params.get("camera") || "cam1"; }
 
-function status(message) { $("status").textContent = message; }
+function status(message) {
+  $("status").textContent = message;
+  const debug = $("obsDebug");
+  if (debug) debug.textContent = new Date().toLocaleTimeString() + " | " + message;
+}
 function setMode(next) {
   mode = next;
   $("sendPanel").classList.toggle("hidden", mode !== "send");
@@ -288,9 +292,18 @@ async function acceptOffer(description, senderId) {
   peer = new RTCPeerConnection(rtcConfig);
   const activePeer = peer;
   const video = $("remoteVideo");
+  video.muted = false;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.onloadedmetadata = () => status("تم استلام بيانات الفيديو: " + video.videoWidth + "×" + video.videoHeight);
+  video.onplaying = () => status("الفيديو يعمل فعلياً داخل OBS");
+  video.onwaiting = () => status("الفيديو وصل لكن التشغيل ينتظر بيانات إضافية");
+  video.onerror = () => status("خطأ عنصر الفيديو: " + (video.error?.message || video.error?.code || "unknown"));
   activePeer.ontrack = event => {
     if (peer !== activePeer) return;
     video.srcObject = event.streams?.[0] || new MediaStream([event.track]);
+    status("وصل مسار " + event.track.kind + " من الطرف المرسل، track=" + event.track.readyState + ", muted=" + event.track.muted);
+    event.track.onunmute = () => status("مسار " + event.track.kind + " أصبح نشطاً");
     const playAttempt = video.play();
     if (playAttempt && typeof playAttempt.then === "function") {
       playAttempt.then(() => status("وصل الفيديو إلى OBS وبدأ التشغيل"))
@@ -305,8 +318,11 @@ async function acceptOffer(description, senderId) {
   activePeer.onconnectionstatechange = () => {
     if (peer === activePeer) status("حالة اتصال WebRTC: " + activePeer.connectionState + " | ICE: " + activePeer.iceConnectionState);
   };
+  activePeer.onsignalingstatechange = () => {
+    if (peer === activePeer) status("Signaling=" + activePeer.signalingState + " | ICE=" + activePeer.iceConnectionState);
+  };
   activePeer.oniceconnectionstatechange = () => {
-    if (peer === activePeer) status("حالة ICE: " + activePeer.iceConnectionState);
+    if (peer === activePeer) status("ICE=" + activePeer.iceConnectionState + " | Connection=" + activePeer.connectionState);
   };
   await activePeer.setRemoteDescription(description);
   const queued = viewerIceQueue.get(senderId) || [];
