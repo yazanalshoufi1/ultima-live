@@ -1,9 +1,14 @@
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-let mode = params.get("mode") === "view" ? "view" : "send";
+let mode = params.get("mode") === "view" ? "view" : params.get("mode") === "multi" ? "multi" : "send";
 const isObs = params.get("obs") === "1";
 document.body.classList.toggle("obs-mode", isObs);
+document.body.classList.toggle("multiview-mode", mode === "multi");
 let ws = null, localStream = null, peer = null, peerId = null, videoTrack = null, audioEnabled = true, zoomMin = 1, zoomMax = 1;
+const multiPeers = new Map();
+const multiPending = new Map();
+const multiIceQueue = new Map();
+const multiCameras = ["cam1", "cam2", "cam3", "cam4", "cam5"];
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 $("room").value = params.get("room") || "royal-palace";
@@ -14,14 +19,18 @@ function setMode(next) {
   mode = next;
   $("sendPanel").classList.toggle("hidden", mode !== "send");
   $("viewPanel").classList.toggle("hidden", mode !== "view");
+  $("multiPanel").classList.toggle("hidden", mode !== "multi");
   $("sendTab").classList.toggle("active", mode === "send");
   $("viewTab").classList.toggle("active", mode === "view");
+  $("multiTab").classList.toggle("active", mode === "multi");
+  document.body.classList.toggle("multiview-mode", mode === "multi");
   const url = new URL(location.href);
   url.searchParams.set("mode", mode);
   history.replaceState({}, "", url);
 }
 $("sendTab").onclick = () => setMode("send");
 $("viewTab").onclick = () => setMode("view");
+$("multiTab").onclick = () => setMode("multi");
 
 function roomName() {
   return $("room").value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || "royal-palace";
@@ -42,6 +51,10 @@ function connectSignal(role) {
     let msg;
     try { msg = JSON.parse(event.data); } catch { return; }
     try {
+      if (mode === "multi") {
+        await handleMultiMessage(msg);
+        return;
+      }
       if (msg.type === "peer-joined") {
         if (mode === "view" && msg.role === "sender" && msg.camera === cameraName()) {
           peerId = msg.id;
@@ -69,6 +82,124 @@ function connectSignal(role) {
   ws.onclose = () => status("انقطع اتصال غرفة الإشارة. أعد المحاولة.");
   ws.onerror = () => status("تعذر الوصول إلى خادم الإشارة.");
 }
+function setMultiCameraState(camera, message, state = "waiting") {
+  const tile = $("tile-" + camera);
+  if (!tile) return;
+  tile.dataset.state = state;
+  $("tile-status-" + camera).textContent = message;
+}
+function clearMultiPeer(id) {
+  const pc = multiPeers.get(id);
+  const camera = multiPending.get(id);
+  if (pc) {
+    pc.ontrack = null;
+    pc.close();
+    multiPeers.delete(id);
+  }
+  if (camera) {
+    const stillConnected = [...multiPending.entries()].some(([otherId, otherCamera]) =>
+      otherCamera === camera && otherId !== id && multiPeers.has(otherId)
+    );
+    if (!stillConnected) {
+      const video = $("video-" + camera);
+      if (video) video.srcObject = null;
+      setMultiCameraState(camera, "بانتظار الكاميرا", "waiting");
+    }
+  }
+  multiPending.delete(id);
+  multiIceQueue.delete(id);
+}
+function closeAllMultiPeers() {
+  for (const id of [...multiPeers.keys()]) clearMultiPeer(id);
+  multiPending.clear();
+  multiIceQueue.clear();
+  for (const camera of multiCameras) {
+    const video = $("video-" + camera);
+    if (video) video.srcObject = null;
+    setMultiCameraState(camera, "بانتظار الكاميرا", "waiting");
+  }
+}
+async function handleMultiMessage(msg) {
+  if (msg.type === "peer-joined" && msg.role === "sender" && multiCameras.includes(msg.camera)) {
+    multiPending.set(msg.id, msg.camera);
+    setMultiCameraState(msg.camera, "جارٍ الاتصال...", "connecting");
+    send({ type: "ready", target: msg.id });
+    return;
+  }
+  if (msg.type === "offer") {
+    const camera = multiPending.get(msg.from);
+    if (!camera) return;
+    const old = multiPeers.get(msg.from);
+    if (old) { old.close(); multiPeers.delete(msg.from); }
+    const pc = new RTCPeerConnection(rtcConfig);
+    multiPeers.set(msg.from, pc);
+    pc.ontrack = event => {
+      const video = $("video-" + camera);
+      if (video) {
+        video.srcObject = event.streams[0];
+        video.play().catch(() => {});
+      }
+      setMultiCameraState(camera, "متصلة", "connected");
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") {
+        setMultiCameraState(camera, "متصلة", "connected");
+      } else if (pc.connectionState === "failed" || pc.connectionState === "disconnected" || pc.connectionState === "closed") {
+        setMultiCameraState(camera, "الاتصال غير مستقر", "connecting");
+      }
+    };
+    pc.onicecandidate = event => {
+      if (event.candidate) send({ type: "ice", target: msg.from, candidate: event.candidate });
+    };
+    await pc.setRemoteDescription(msg.description);
+    const queued = multiIceQueue.get(msg.from) || [];
+    for (const candidate of queued) await pc.addIceCandidate(candidate);
+    multiIceQueue.delete(msg.from);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: "answer", target: msg.from, description: pc.localDescription });
+    return;
+  }
+  if (msg.type === "ice" && msg.candidate) {
+    const pc = multiPeers.get(msg.from);
+    if (pc && pc.remoteDescription) {
+      await pc.addIceCandidate(msg.candidate);
+    } else {
+      const queue = multiIceQueue.get(msg.from) || [];
+      queue.push(msg.candidate);
+      multiIceQueue.set(msg.from, queue);
+    }
+    return;
+  }
+  if (msg.type === "peer-left") {
+    clearMultiPeer(msg.id);
+  }
+}
+function connectMultiView() {
+  closeAllMultiPeers();
+  connectSignal("viewer");
+}
+function disconnectMultiView() {
+  if (ws) { ws.close(); ws = null; }
+  closeAllMultiPeers();
+  status("تم إيقاف شاشة المراقبة");
+}
+$("connectMulti").onclick = connectMultiView;
+$("disconnectMulti").onclick = disconnectMultiView;
+$("copyMultiUrl").onclick = async () => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("mode", "multi");
+  url.searchParams.set("room", roomName());
+  url.searchParams.set("obs", "1");
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    status("تم نسخ رابط شاشة المراقبة لـ OBS");
+  } catch {
+    status(url.toString());
+  }
+};
+
 function makePeer(targetId) {
   closePeer();
   peer = new RTCPeerConnection(rtcConfig);
@@ -195,6 +326,9 @@ $("copyUrl").onclick = async () => {
 if (mode === "view") {
   setMode("view");
   if (isObs) $("connectView").click();
+} else if (mode === "multi") {
+  setMode("multi");
+  if (isObs) connectMultiView();
 } else {
   setMode("send");
 }
