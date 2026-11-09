@@ -3,7 +3,7 @@ const params = new URLSearchParams(location.search);
 let mode = params.get("mode") === "view" ? "view" : "send";
 const isObs = params.get("obs") === "1";
 document.body.classList.toggle("obs-mode", isObs);
-let ws = null, localStream = null, peer = null, peerId = null;
+let ws = null, localStream = null, peer = null, peerId = null, videoTrack = null, audioEnabled = true, zoomMin = 1, zoomMax = 1;
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 $("room").value = params.get("room") || "royal-palace";
@@ -105,14 +105,49 @@ async function acceptOffer(description, senderId) {
 function closePeer() {
   if (peer) { peer.ontrack = null; peer.close(); peer = null; }
 }
+function setupCameraControls() {
+  const caps = videoTrack?.getCapabilities?.() || {};
+  const zoom = $("zoomControl");
+  const value = $("zoomValue");
+  if (caps.zoom && Number.isFinite(caps.zoom.max) && caps.zoom.max > (caps.zoom.min || 1)) {
+    zoomMin = caps.zoom.min || 1;
+    zoomMax = caps.zoom.max;
+    zoom.min = zoomMin;
+    zoom.max = zoomMax;
+    zoom.step = caps.zoom.step || 0.1;
+    zoom.value = Math.max(zoomMin, Math.min(zoomMax, caps.zoom.min || 1));
+    zoom.disabled = false;
+    value.textContent = Number(zoom.value).toFixed(1) + "×";
+  } else {
+    zoom.min = 1; zoom.max = 1; zoom.value = 1; zoom.disabled = true;
+    value.textContent = "غير مدعوم";
+  }
+  $("cameraTools").classList.remove("hidden");
+}
+$("zoomControl").oninput = async () => {
+  if (!videoTrack || $("zoomControl").disabled) return;
+  const zoom = Number($("zoomControl").value);
+  $("zoomValue").textContent = zoom.toFixed(1) + "×";
+  try { await videoTrack.applyConstraints({ advanced: [{ zoom }] }); }
+  catch (error) { status("هذا مستوى الزوم غير مدعوم: " + error.message); }
+};
+$("audioToggle").onclick = () => {
+  if (!localStream) return;
+  audioEnabled = !audioEnabled;
+  localStream.getAudioTracks().forEach(track => { track.enabled = audioEnabled; });
+  $("audioToggle").textContent = audioEnabled ? "إيقاف الصوت" : "تشغيل الصوت";
+  $("audioToggle").classList.toggle("muted-audio", !audioEnabled);
+  status(audioEnabled ? "الصوت يعمل وسيصل إلى OBS" : "تم كتم الصوت المرسل إلى OBS");
+};
+
 $("startCamera").onclick = async () => {
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("افتح الموقع عبر HTTPS واستخدم Safari حديثاً");
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }
+      video: { facingMode: "environment", width: { exact: 1280 }, height: { exact: 720 }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: 30, max: 30 } }
     });
-    $("localVideo").srcObject = localStream;
+    videoTrack = localStream.getVideoTracks()[0] || null;\n    audioEnabled = true;\n    $("audioToggle").textContent = "إيقاف الصوت";\n    $("audioToggle").classList.remove("muted-audio");\n    setupCameraControls();\n    try { if (screen.orientation?.lock) await screen.orientation.lock("landscape"); } catch {}\n    $("localVideo").srcObject = localStream;
     $("localVideo").classList.remove("hidden");
     connectSignal("sender");
     status("الكاميرا تعمل. بانتظار جهاز الاستقبال...");
