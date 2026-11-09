@@ -1,6 +1,8 @@
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 let mode = params.get("mode") === "view" ? "view" : "send";
+const isObs = params.get("obs") === "1";
+document.body.classList.toggle("obs-mode", isObs);
 let ws = null, localStream = null, peer = null, peerId = null;
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -148,7 +150,7 @@ $("copyUrl").onclick = async () => {
 
 if (mode === "view") {
   setMode("view");
-  if (params.get("obs") === "1") $("connectView").click();
+  if (isObs) $("connectView").click();
 } else {
   setMode("send");
 }
