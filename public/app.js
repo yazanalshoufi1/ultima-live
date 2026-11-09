@@ -246,6 +246,11 @@ $("copyMultiUrl").onclick = async () => {
   const url = buildAppUrl({ portal: "control", mode: "multi", room: roomName(), obs: "1" });
   await copyLink(url, "تم نسخ رابط شاشة المراقبة لـ OBS");
 };
+$("copyCameraObsLink").onclick = async () => {
+  const selectedCamera = cameraName();
+  const url = buildAppUrl({ mode: "view", room: roomName(), camera: selectedCamera, obs: "1" });
+  await copyLink(url, "تم نسخ رابط OBS للكاميرا: " + selectedCamera);
+};
 
 function makePeer(targetId) {
   closeSenderPeer(targetId);
