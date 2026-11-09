@@ -9,6 +9,8 @@ document.body.classList.toggle("obs-mode", isObs);
 document.body.classList.toggle("multiview-mode", mode === "multi");
 let ws = null, localStream = null, peer = null, peerId = null, videoTrack = null, audioEnabled = true, zoomMin = 1, zoomMax = 1;
 const senderPeers = new Map();
+const senderIceQueue = new Map();
+let viewerIceQueue = [];
 const multiPeers = new Map();
 const multiPending = new Map();
 const multiIceQueue = new Map();
@@ -71,13 +73,24 @@ function connectSignal(role) {
         peerId = msg.from;
         await acceptOffer(msg.description, msg.from);
       } else if (msg.type === "answer" && mode === "send" && senderPeers.has(msg.from)) {
-        await senderPeers.get(msg.from).setRemoteDescription(msg.description);
+        const pc = senderPeers.get(msg.from);
+        await pc.setRemoteDescription(msg.description);
+        const queued = senderIceQueue.get(msg.from) || [];
+        for (const candidate of queued) await pc.addIceCandidate(candidate);
+        senderIceQueue.delete(msg.from);
         status("تم إنشاء اتصال الفيديو");
       } else if (msg.type === "ice" && msg.candidate) {
         if (mode === "send" && senderPeers.has(msg.from)) {
-          await senderPeers.get(msg.from).addIceCandidate(msg.candidate);
+          const pc = senderPeers.get(msg.from);
+          if (pc.remoteDescription) await pc.addIceCandidate(msg.candidate);
+          else {
+            const queue = senderIceQueue.get(msg.from) || [];
+            queue.push(msg.candidate);
+            senderIceQueue.set(msg.from, queue);
+          }
         } else if (mode === "view" && msg.from === peerId && peer) {
-          await peer.addIceCandidate(msg.candidate);
+          if (peer.remoteDescription) await peer.addIceCandidate(msg.candidate);
+          else viewerIceQueue.push(msg.candidate);
         }
       } else if (msg.type === "peer-left") {
         if (mode === "send" && senderPeers.has(msg.id)) {
@@ -215,6 +228,7 @@ $("copySenderLink").onclick = async () => {
   const url = new URL(location.href);
   url.search = "";
   url.searchParams.set("portal", "sender");
+  url.searchParams.set("mode", "send");
   url.searchParams.set("room", roomName());
   url.searchParams.set("camera", cameraName());
   try {
@@ -243,6 +257,7 @@ function makePeer(targetId) {
   closeSenderPeer(targetId);
   const pc = new RTCPeerConnection(rtcConfig);
   senderPeers.set(targetId, pc);
+  senderIceQueue.delete(targetId);
   localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   pc.onicecandidate = event => {
     if (event.candidate) send({ type: "ice", target: targetId, candidate: event.candidate });
@@ -264,6 +279,7 @@ function closeSenderPeer(targetId) {
     pc.close();
     senderPeers.delete(targetId);
   }
+  senderIceQueue.delete(targetId);
 }
 function closeAllSenderPeers() {
   for (const id of [...senderPeers.keys()]) closeSenderPeer(id);
@@ -279,13 +295,17 @@ async function acceptOffer(description, senderId) {
     if (event.candidate) send({ type: "ice", target: senderId, candidate: event.candidate });
   };
   peer.onconnectionstatechange = () => status("حالة الفيديو: " + peer.connectionState);
+  viewerIceQueue = [];
   await peer.setRemoteDescription(description);
+  for (const candidate of viewerIceQueue) await peer.addIceCandidate(candidate);
+  viewerIceQueue = [];
   const answer = await peer.createAnswer();
   await peer.setLocalDescription(answer);
   send({ type: "answer", target: senderId, description: peer.localDescription });
 }
 function closePeer() {
   if (peer) { peer.ontrack = null; peer.close(); peer = null; }
+  viewerIceQueue = [];
 }
 function setupCameraControls() {
   const caps = videoTrack?.getCapabilities?.() || {};
