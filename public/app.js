@@ -145,7 +145,7 @@ $("startCamera").onclick = async () => {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("افتح الموقع عبر HTTPS واستخدم Safari حديثاً");
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: { facingMode: "environment", width: { exact: 1280 }, height: { exact: 720 }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: 30, max: 30 } }
+      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: 30, max: 30 } }
     });
     videoTrack = localStream.getVideoTracks()[0] || null;
     audioEnabled = true;
@@ -158,6 +158,9 @@ $("startCamera").onclick = async () => {
     connectSignal("sender");
     status("الكاميرا تعمل. بانتظار جهاز الاستقبال...");
   } catch (error) {
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+    videoTrack = null;
     status("لم نتمكن من تشغيل الكاميرا: " + error.message);
   }
 };
