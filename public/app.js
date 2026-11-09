@@ -5,6 +5,7 @@ const isObs = params.get("obs") === "1";
 document.body.classList.toggle("obs-mode", isObs);
 document.body.classList.toggle("multiview-mode", mode === "multi");
 let ws = null, localStream = null, peer = null, peerId = null, videoTrack = null, audioEnabled = true, zoomMin = 1, zoomMax = 1;
+const senderPeers = new Map();
 const multiPeers = new Map();
 const multiPending = new Map();
 const multiIceQueue = new Map();
@@ -61,19 +62,26 @@ function connectSignal(role) {
           send({ type: "ready", target: msg.id });
         }
       } else if (msg.type === "ready" && mode === "send" && localStream) {
-        peerId = msg.from;
         await makeOffer(msg.from);
       } else if (msg.type === "offer" && mode === "view") {
         peerId = msg.from;
         await acceptOffer(msg.description, msg.from);
-      } else if (msg.type === "answer" && mode === "send" && peer && msg.from === peerId) {
-        await peer.setRemoteDescription(msg.description);
+      } else if (msg.type === "answer" && mode === "send" && senderPeers.has(msg.from)) {
+        await senderPeers.get(msg.from).setRemoteDescription(msg.description);
         status("تم إنشاء اتصال الفيديو");
-      } else if (msg.type === "ice" && msg.from === peerId && peer && msg.candidate) {
-        await peer.addIceCandidate(msg.candidate);
-      } else if (msg.type === "peer-left" && msg.id === peerId) {
-        closePeer();
-        status("انقطع الطرف الآخر. بانتظار إعادة الاتصال...");
+      } else if (msg.type === "ice" && msg.candidate) {
+        if (mode === "send" && senderPeers.has(msg.from)) {
+          await senderPeers.get(msg.from).addIceCandidate(msg.candidate);
+        } else if (mode === "view" && msg.from === peerId && peer) {
+          await peer.addIceCandidate(msg.candidate);
+        }
+      } else if (msg.type === "peer-left") {
+        if (mode === "send" && senderPeers.has(msg.id)) {
+          closeSenderPeer(msg.id);
+        } else if (mode === "view" && msg.id === peerId) {
+          closePeer();
+          status("انقطع الطرف الآخر. بانتظار إعادة الاتصال...");
+        }
       }
     } catch (error) {
       status("تعذر إنشاء الاتصال: " + error.message);
@@ -201,14 +209,15 @@ $("copyMultiUrl").onclick = async () => {
 };
 
 function makePeer(targetId) {
-  closePeer();
-  peer = new RTCPeerConnection(rtcConfig);
-  localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
-  peer.onicecandidate = event => {
+  closeSenderPeer(targetId);
+  const pc = new RTCPeerConnection(rtcConfig);
+  senderPeers.set(targetId, pc);
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  pc.onicecandidate = event => {
     if (event.candidate) send({ type: "ice", target: targetId, candidate: event.candidate });
   };
-  peer.onconnectionstatechange = () => status("حالة الفيديو: " + peer.connectionState);
-  return peer;
+  pc.onconnectionstatechange = () => status("حالة الفيديو: " + pc.connectionState);
+  return pc;
 }
 async function makeOffer(targetId) {
   const pc = makePeer(targetId);
@@ -216,6 +225,17 @@ async function makeOffer(targetId) {
   await pc.setLocalDescription(offer);
   send({ type: "offer", target: targetId, description: pc.localDescription });
   status("أرسلنا طلب الفيديو إلى جهاز الاستقبال...");
+}
+function closeSenderPeer(targetId) {
+  const pc = senderPeers.get(targetId);
+  if (pc) {
+    pc.onicecandidate = null;
+    pc.close();
+    senderPeers.delete(targetId);
+  }
+}
+function closeAllSenderPeers() {
+  for (const id of [...senderPeers.keys()]) closeSenderPeer(id);
 }
 async function acceptOffer(description, senderId) {
   closePeer();
@@ -299,6 +319,7 @@ $("stopCamera").onclick = () => {
   if (localStream) localStream.getTracks().forEach(track => track.stop());
   localStream = null;
   closePeer();
+  closeAllSenderPeers();
   if (ws) ws.close();
   $("localVideo").srcObject = null;
   $("localVideo").classList.add("hidden");
