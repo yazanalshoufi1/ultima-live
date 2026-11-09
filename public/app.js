@@ -147,7 +147,13 @@ $("startCamera").onclick = async () => {
       audio: true,
       video: { facingMode: "environment", width: { exact: 1280 }, height: { exact: 720 }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: 30, max: 30 } }
     });
-    videoTrack = localStream.getVideoTracks()[0] || null;\n    audioEnabled = true;\n    $("audioToggle").textContent = "إيقاف الصوت";\n    $("audioToggle").classList.remove("muted-audio");\n    setupCameraControls();\n    try { if (screen.orientation?.lock) await screen.orientation.lock("landscape"); } catch {}\n    $("localVideo").srcObject = localStream;
+    videoTrack = localStream.getVideoTracks()[0] || null;
+    audioEnabled = true;
+    $("audioToggle").textContent = "إيقاف الصوت";
+    $("audioToggle").classList.remove("muted-audio");
+    setupCameraControls();
+    try { if (screen.orientation?.lock) await screen.orientation.lock("landscape"); } catch {}
+    $("localVideo").srcObject = localStream;
     $("localVideo").classList.remove("hidden");
     connectSignal("sender");
     status("الكاميرا تعمل. بانتظار جهاز الاستقبال...");
