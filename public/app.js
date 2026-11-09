@@ -198,6 +198,19 @@ function disconnectMultiView() {
 }
 $("connectMulti").onclick = connectMultiView;
 $("disconnectMulti").onclick = disconnectMultiView;
+$("copyControlLink").onclick = async () => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("portal", "control");
+  url.searchParams.set("room", roomName());
+  url.searchParams.set("mode", "multi");
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    status("تم نسخ رابط واجهة الإدارة");
+  } catch {
+    status(url.toString());
+  }
+};
 $("copySenderLink").onclick = async () => {
   const url = new URL(location.href);
   url.search = "";
