@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090d18">
+  <title>ULTIMA LIVE</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#090d18;color:#f4f6fb}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 0%,#17233d 0,transparent 38%),#090d18}
+    main{width:min(900px,92vw);margin:0 auto;padding:42px 0}header{display:flex;align-items:center;gap:12px;margin-bottom:34px}
+    .mark{width:44px;height:44px;border:1px solid #52658d;border-radius:13px;display:grid;place-items:center;color:#9fc2ff;font-weight:800}
+    h1{font-size:clamp(25px,5vw,42px);letter-spacing:.04em;margin:0}header p{margin:4px 0 0;color:#9aa8c3}
+    .panel{background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(20px,4vw,34px);box-shadow:0 20px 60px #0005}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}.tab,button{border:1px solid #344665;background:#17243a;color:#eaf1ff;border-radius:11px;padding:12px 18px;font:inherit;cursor:pointer}
+    .tab.active,button.primary{background:#315fa9;border-color:#5689d9}.field{display:grid;gap:8px;margin:16px 0}.field label{color:#b7c4da;font-size:14px}
+    input,select{width:100%;padding:13px 14px;border-radius:10px;border:1px solid #354761;background:#0b1322;color:#fff;font:inherit}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.muted{color:#9aa8c3;font-size:14px;line-height:1.7}
+    .status{margin-top:18px;padding:12px 14px;border-radius:10px;background:#0b1322;color:#a9bad5;min-height:46px}
+    video{width:100%;max-height:62vh;background:#05080e;border-radius:14px;margin-top:16px}
+    .hidden{display:none!important}.pill{display:inline-block;border:1px solid #344665;border-radius:99px;padding:4px 10px;color:#a9c8ff;font-size:12px}
+    a{color:#a9c8ff}footer{margin-top:22px;color:#71819e;font-size:12px}
+  </style>
+</head>
+<body>
+<main>
+  <header><div class="mark">U</div><div><h1>ULTIMA LIVE</h1><p>Multi-camera live production • Early access</p></div></header>
+  <section class="panel">
+    <div class="tabs">
+      <button class="tab active" id="sendTab" type="button">إرسال كاميرا</button>
+      <button class="tab" id="viewTab" type="button">استقبال في OBS</button>
+    </div>
+    <div class="field"><label for="room">رمز الغرفة</label><input id="room" value="royal-palace" maxlength="40" autocomplete="off"></div>
+    <div class="field"><label for="camera">رقم الكاميرا</label><select id="camera"><option value="cam1">Camera 1</option><option value="cam2">Camera 2</option><option value="cam3">Camera 3</option><option value="cam4">Camera 4</option><option value="cam5">Camera 5</option></select></div>
+    <div id="sendPanel">
+      <p class="muted">افتح الصفحة من Safari على الآيفون، اسمح باستخدام الكاميرا والميكروفون، ثم اترك الصفحة مفتوحة أثناء البث.</p>
+      <div class="actions"><button class="primary" id="startCamera" type="button">تشغيل الكاميرا</button><button id="stopCamera" type="button">إيقاف</button></div>
+      <video id="localVideo" autoplay playsinline muted class="hidden"></video>
+    </div>
+    <div id="viewPanel" class="hidden">
+      <p class="muted">انسخ رابط الاستقبال إلى OBS عبر Browser Source. يجب أن يكون جهاز الإرسال متصلاً بالغرفة وبنفس رقم الكاميرا.</p>
+      <div class="actions"><button class="primary" id="connectView" type="button">اتصال بالكاميرا</button><button id="copyUrl" type="button">نسخ رابط OBS</button></div>
+      <video id="remoteVideo" autoplay playsinline controls></video>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">جاهز للاتصال</div>
+    <p class="muted">نسخة اختبار أولية. جودة 1080p تعتمد على الهاتف والشبكة والرفع، وقد نحتاج TURN لتحسين الاتصال عبر بعض الشبكات.</p>
+  </section>
+  <footer>ULTIMA DESIGN · Private room signaling · WebRTC</footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
