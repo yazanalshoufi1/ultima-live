@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-let mode = params.get("mode") === "view" ? "view" : params.get("mode") === "multi" ? "multi" : "send";
+const portal = params.get("portal") === "control" ? "control" : params.get("portal") === "sender" ? "sender" : "legacy";
+let mode = portal === "control" ? "multi" : params.get("mode") === "view" ? "view" : params.get("mode") === "multi" ? "multi" : "send";
+document.body.classList.toggle("sender-portal", portal === "sender");
+document.body.classList.toggle("control-portal", portal === "control");
 const isObs = params.get("obs") === "1";
 document.body.classList.toggle("obs-mode", isObs);
 document.body.classList.toggle("multiview-mode", mode === "multi");
@@ -14,6 +17,7 @@ const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
 $("room").value = params.get("room") || "royal-palace";
 $("camera").value = params.get("camera") || "cam1";
+if (portal === "sender") { $("room").value = params.get("room") || "royal-palace"; $("camera").value = params.get("camera") || "cam1"; }
 
 function status(message) { $("status").textContent = message; }
 function setMode(next) {
@@ -194,9 +198,23 @@ function disconnectMultiView() {
 }
 $("connectMulti").onclick = connectMultiView;
 $("disconnectMulti").onclick = disconnectMultiView;
+$("copySenderLink").onclick = async () => {
+  const url = new URL(location.href);
+  url.search = "";
+  url.searchParams.set("portal", "sender");
+  url.searchParams.set("room", roomName());
+  url.searchParams.set("camera", cameraName());
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    status("تم إنشاء ونسخ رابط المصوّر لهذه الكاميرا");
+  } catch {
+    status(url.toString());
+  }
+};
 $("copyMultiUrl").onclick = async () => {
   const url = new URL(location.href);
   url.search = "";
+  url.searchParams.set("portal", "control");
   url.searchParams.set("mode", "multi");
   url.searchParams.set("room", roomName());
   url.searchParams.set("obs", "1");
