@@ -69,7 +69,9 @@ async function copyLink(url, message) {
 function connectSignal(role) {
   if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
   const scheme = location.protocol === "https:" ? "wss:" : "ws:";
-  const signalParams = new URLSearchParams({ room: roomName() });\n  if (portal === "control") signalParams.set("portal", "control");\n  ws = new WebSocket(`${scheme}//${location.host}/signal?${signalParams.toString()}`);
+  const signalParams = new URLSearchParams({ room: roomName() });
+  if (portal === "control") signalParams.set("portal", "control");
+  ws = new WebSocket(`${scheme}//${location.host}/signal?${signalParams.toString()}`);
   ws.onopen = () => {
     send({ type: "register", role, camera: cameraName() });
     status("متصل بغرفة " + roomName() + "، بانتظار الطرف الآخر...");
