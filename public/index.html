@@ -66,6 +66,18 @@
   </style>
 </head>
 <body>
+<section id="adminLogin" class="admin-login hidden" aria-labelledby="adminLoginTitle">
+  <header><div class="mark">U</div><div><h1>ULTIMA LIVE</h1><p>Control portal</p></div></header>
+  <h2 id="adminLoginTitle">تسجيل دخول الإدارة</h2>
+  <p class="muted">هذه المنطقة مخصصة لإدارة البث ومراقبة الكاميرات.</p>
+  <form id="adminLoginForm">
+    <div class="field"><label for="adminUsername">اسم المستخدم</label><input id="adminUsername" name="username" autocomplete="username" required></div>
+    <div class="field"><label for="adminPassword">كلمة المرور</label><input id="adminPassword" name="password" type="password" autocomplete="current-password" required></div>
+    <div class="actions"><button class="primary" id="adminLoginButton" type="submit">دخول</button></div>
+    <div id="adminLoginError" class="admin-login-error" role="alert"></div>
+  </form>
+</section>
+
 <main>
   <header><div class="mark">U</div><div><h1>ULTIMA LIVE</h1><p>Multi-camera live production • Early access</p></div></header>
   <section class="panel">
