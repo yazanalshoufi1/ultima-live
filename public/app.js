@@ -4,6 +4,7 @@ const portal = params.get("portal") === "control" ? "control" : params.get("port
 let mode = portal === "control" ? "multi" : params.get("mode") === "view" ? "view" : params.get("mode") === "multi" ? "multi" : "send";
 document.body.classList.toggle("sender-portal", portal === "sender");
 document.body.classList.toggle("control-portal", portal === "control");
+document.body.classList.toggle("control-locked", portal === "control");
 const isObs = params.get("obs") === "1";
 document.body.classList.toggle("obs-mode", isObs);
 document.body.classList.toggle("multiview-mode", mode === "multi");
@@ -68,7 +69,9 @@ async function copyLink(url, message) {
 function connectSignal(role) {
   if (ws && ws.readyState <= WebSocket.OPEN) ws.close();
   const scheme = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${scheme}//${location.host}/signal?room=${encodeURIComponent(roomName())}`);
+  const signalParams = new URLSearchParams({ room: roomName() });
+  if (portal === "control") signalParams.set("portal", "control");
+  ws = new WebSocket(`${scheme}//${location.host}/signal?${signalParams.toString()}`);
   ws.onopen = () => {
     send({ type: "register", role, camera: cameraName() });
     status("متصل بغرفة " + roomName() + "، بانتظار الطرف الآخر...");
@@ -247,7 +250,7 @@ $("copySenderLink").onclick = async () => {
   await copyLink(url, "تم نسخ رابط المصوّر: " + selectedCamera);
 };
 $("copyMultiUrl").onclick = async () => {
-  const url = buildAppUrl({ portal: "control", mode: "multi", room: roomName(), obs: "1" });
+  const url = buildAppUrl({ mode: "multi", room: roomName(), obs: "1" });
   await copyLink(url, "تم نسخ رابط شاشة المراقبة لـ OBS");
 };
 $("copyCameraObsLink").onclick = async () => {
@@ -416,12 +419,56 @@ $("copyUrl").onclick = async () => {
   await copyLink(url, "تم نسخ رابط OBS للكاميرا: " + cameraName());
 };
 
-if (mode === "view") {
-  setMode("view");
-  if (isObs) $("connectView").click();
-} else if (mode === "multi") {
-  setMode("multi");
-  if (isObs) connectMultiView();
-} else {
-  setMode("send");
+async function initializeApp() {
+  if (portal === "control") {
+    const loginPanel = $("adminLogin");
+    const form = $("adminLoginForm");
+    const errorBox = $("adminLoginError");
+    try {
+      const response = await fetch("/admin/session", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error("login-required");
+      document.body.classList.remove("control-locked");
+      loginPanel.classList.add("hidden");
+    } catch {
+      loginPanel.classList.remove("hidden");
+      form.onsubmit = async event => {
+        event.preventDefault();
+        errorBox.textContent = "";
+        const button = $("adminLoginButton");
+        button.disabled = true;
+        button.textContent = "جارٍ التحقق...";
+        try {
+          const response = await fetch("/admin/login", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ username: $("adminUsername").value, password: $("adminPassword").value })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "تعذر تسجيل الدخول");
+          location.reload();
+        } catch (error) {
+          errorBox.textContent = error.message || "تعذر الاتصال بالخادم";
+          button.disabled = false;
+          button.textContent = "دخول";
+        }
+      };
+      return;
+    }
+    $("adminLogout").onclick = async () => {
+      await fetch("/admin/logout", { method: "POST", credentials: "same-origin" });
+      location.reload();
+    };
+  }
+
+  if (mode === "view") {
+    setMode("view");
+    if (isObs) $("connectView").click();
+  } else if (mode === "multi") {
+    setMode("multi");
+    if (isObs) connectMultiView();
+  } else {
+    setMode("send");
+  }
 }
+initializeApp();

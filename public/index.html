@@ -32,6 +32,12 @@
     @media(max-width:850px){.multiview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:520px){.multiview-grid{grid-template-columns:1fr}}
 
+    .admin-login{width:min(460px,92vw);margin:9vh auto 0;background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(22px,5vw,36px);box-shadow:0 20px 60px #0007}
+    .admin-login h2{margin:0 0 8px;font-size:25px}.admin-login .muted{margin:0 0 20px}
+    .admin-login .field{margin:14px 0}.admin-login .actions{margin-top:18px}
+    .admin-login-error{min-height:22px;color:#ff9eaa;font-size:13px;margin-top:12px}
+    body.control-locked main{display:none!important}
+
     body.sender-portal .tabs,body.sender-portal .field,body.sender-portal #viewPanel,body.sender-portal #multiPanel{display:none!important}
     body.sender-portal #sendPanel{display:block!important}
     body.sender-portal main{width:min(620px,94vw);padding-top:7vh}
@@ -61,6 +67,18 @@
   </style>
 </head>
 <body>
+<section id="adminLogin" class="admin-login hidden" aria-labelledby="adminLoginTitle">
+  <header><div class="mark">U</div><div><h1>ULTIMA LIVE</h1><p>Control portal</p></div></header>
+  <h2 id="adminLoginTitle">تسجيل دخول الإدارة</h2>
+  <p class="muted">هذه المنطقة مخصصة لإدارة البث ومراقبة الكاميرات.</p>
+  <form id="adminLoginForm">
+    <div class="field"><label for="adminUsername">اسم المستخدم</label><input id="adminUsername" name="username" autocomplete="username" required></div>
+    <div class="field"><label for="adminPassword">كلمة المرور</label><input id="adminPassword" name="password" type="password" autocomplete="current-password" required></div>
+    <div class="actions"><button class="primary" id="adminLoginButton" type="submit">دخول</button></div>
+    <div id="adminLoginError" class="admin-login-error" role="alert"></div>
+  </form>
+</section>
+
 <main>
   <header><div class="mark">U</div><div><h1>ULTIMA LIVE</h1><p>Multi-camera live production • Early access</p></div></header>
   <section class="panel">
@@ -94,7 +112,7 @@
     </div>
     <div id="multiPanel" class="hidden">
       <p class="muted">شاشة إدارة ومراقبة مباشرة لجميع الكاميرات الخمس في غرفة واحدة.</p>
-      <p class="muted portal-note">هذه واجهة التحكم. لم نفعّل بعد قفل الصلاحيات على الخادم، لذلك لا تعتبر الروابط الحالية حماية أمنية نهائية.</p>
+      <p class="muted portal-note">هذه واجهة إدارة محمية. روابط المصورين واستقبال OBS لا تتطلب تسجيل دخول.</p>
       <div class="actions">
         <button class="primary" id="connectMulti" type="button">اتصال بكل الكاميرات</button>
         <button id="disconnectMulti" type="button">إيقاف المراقبة</button>
@@ -102,6 +120,7 @@
         <button id="copySenderLink" type="button">إنشاء رابط للمصوّر</button>
         <button id="copyCameraObsLink" type="button">نسخ رابط OBS للكاميرا المحددة</button>
         <button id="copyControlLink" type="button">نسخ رابط الإدارة</button>
+        <button id="adminLogout" type="button">تسجيل الخروج</button>
       </div>
       <div class="multiview-grid">
         <div class="camera-tile" id="tile-cam1" data-state="waiting"><div class="tile-heading">CAMERA 1</div><video id="video-cam1" autoplay playsinline muted></video><div class="tile-status" id="tile-status-cam1">بانتظار الكاميرا</div></div>
@@ -116,6 +135,6 @@
   </section>
   <footer>ULTIMA DESIGN · Private room signaling · WebRTC</footer>
 </main>
-<script src="/app.js?v=diag01"></script>
+<script src="/app.js?v=admin-auth01"></script>
 </body>
 </html>
