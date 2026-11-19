@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const portal = params.get("portal") === "control" ? "control" : "sender";
-let mode = portal === "control" ? "multi" : params.get("mode") === "view" ? "view" : params.get("mode") === "multi" ? "multi" : "send";
+let mode = portal === "control" ? "multi" : params.get("obs") === "1" && params.get("mode") === "view" ? "view" : params.get("obs") === "1" && params.get("mode") === "multi" ? "multi" : "send";
 document.body.classList.toggle("sender-portal", portal === "sender");
 document.body.classList.toggle("control-portal", portal === "control");
 document.body.classList.toggle("control-locked", portal === "control");
