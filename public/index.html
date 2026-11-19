@@ -38,7 +38,9 @@
     .admin-login-error{min-height:22px;color:#ff9eaa;font-size:13px;margin-top:12px}
     body.control-locked main{display:none!important}
 
-    body.sender-portal .tabs,body.sender-portal .field,body.sender-portal #viewPanel,body.sender-portal #multiPanel,body.sender-portal footer{display:none!important}
+    body.sender-portal .tabs,body.sender-portal .field:not(#cameraField),body.sender-portal #viewPanel,body.sender-portal #multiPanel,body.sender-portal footer{display:none!important}
+    body.sender-portal #cameraField{display:grid!important}
+    body.obs-mode.sender-portal #sendPanel{display:none!important}
     body.sender-portal #sendPanel{display:block!important}
     body.sender-portal main{width:min(620px,94vw);padding-top:7vh}
     body.sender-portal header{margin-bottom:22px}
@@ -88,7 +90,7 @@
       <button class="tab" id="multiTab" type="button">مراقبة الكاميرات</button>
     </div>
     <div class="field"><label for="room">رمز الغرفة</label><input id="room" value="royal-palace" maxlength="40" autocomplete="off"></div>
-    <div class="field"><label for="camera">رقم الكاميرا</label><select id="camera"><option value="cam1">Camera 1</option><option value="cam2">Camera 2</option><option value="cam3">Camera 3</option><option value="cam4">Camera 4</option><option value="cam5">Camera 5</option></select></div>
+    <div class="field" id="cameraField"><label for="camera">رقم الكاميرا</label><select id="camera"><option value="cam1">Camera 1</option><option value="cam2">Camera 2</option><option value="cam3">Camera 3</option><option value="cam4">Camera 4</option><option value="cam5">Camera 5</option></select></div>
     <div id="sendPanel">
       <p class="muted">افتح الصفحة من Safari على الآيفون، اسمح باستخدام الكاميرا والميكروفون، ثم اترك الصفحة مفتوحة أثناء البث.</p>
       <div class="actions"><button class="primary" id="startCamera" type="button">تشغيل الكاميرا</button><button id="stopCamera" type="button">إيقاف</button></div>
@@ -135,6 +137,6 @@
   </section>
   <footer>ULTIMA DESIGN · Private room signaling · WebRTC</footer>
 </main>
-<script src="/app.js?v=sender-isolated02"></script>
+<script src="/app.js?v=sender-camera-select03"></script>
 </body>
 </html>
