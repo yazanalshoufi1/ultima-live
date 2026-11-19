@@ -65,9 +65,7 @@ async function hasAdminSession(request, env) {
     const expected = await sign(parts[0], env.ADMIN_SESSION_SECRET);
     const supplied = decodeBase64url(parts[1]);
     if (expected.length !== supplied.length) return false;
-    return crypto.subtle.timingSafeEqual
-      ? crypto.subtle.timingSafeEqual(expected, supplied)
-      : safeEqual(expected.join(","), supplied.join(","));
+    return safeEqual(expected.join(","), supplied.join(","));
   } catch {
     return false;
   }
